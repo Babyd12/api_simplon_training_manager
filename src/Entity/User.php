@@ -2,29 +2,44 @@
 
 namespace App\Entity;
 
-use ApiPlatform\Metadata\ApiResource;
-use ApiPlatform\Metadata\Delete;
 use ApiPlatform\Metadata\Get;
-use ApiPlatform\Metadata\Patch;
-use ApiPlatform\Metadata\Post;
 use ApiPlatform\Metadata\Put;
-use App\Repository\UserRepository;
+
+use ApiPlatform\Metadata\Post;
+use ApiPlatform\Metadata\Patch;
+use ApiPlatform\Metadata\Delete;
 use Doctrine\ORM\Mapping as ORM;
-use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
+use App\Controller\UserController;
+use App\Repository\UserRepository;
+use ApiPlatform\Metadata\ApiResource;
+use Doctrine\Common\Collections\Collection;
+use Symfony\Component\Form\AbstractType;
+use Symfony\Component\Serializer\Annotation\Groups;
+use Symfony\Bridge\Doctrine\Validator\Constraints\UniqueEntity;
+use Symfony\Bridge\Doctrine\ArgumentResolver\EntityValueResolver;
 use Symfony\Component\Security\Core\User\UserInterface;
+use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
 
 #[ORM\Entity(repositoryClass: UserRepository::class)]
-#[ORM\Table(name: '`user`')]
+#[UniqueEntity(fields: ['email'], message: 'There is already an account with this email')]
 #[ApiResource]
 #[Get()]
-#[Post()]
-#[Put()]
-#[Delete()]
-#[Patch(
-    name:'condidater',
-    urlTemplate: 'user/condidater/{id}',
-    // controller:
+
+#[Post(
+    denormalizationContext: ['groups' => ['write']]
 )]
+
+#[Put()]
+#[Patch(
+    name: 'user_apply',
+    uriTemplate: 'user_appy/formamtion/{id}',
+    controller: UserController::class,
+    denormalizationContext: [ 'groups' => ['write_appy_for_one_formation'] ],
+    normalizationContext: [ 'groups' => ['read_appy_for_one_formation'] ],
+
+)]
+#[Delete()]
+
 class User implements UserInterface, PasswordAuthenticatedUserInterface
 {
     #[ORM\Id]
@@ -32,43 +47,33 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Column]
     private ?int $id = null;
 
-    #[ORM\Column(length: 180, unique: true)]
-    private ?string $email = null;
-
-    #[ORM\Column]
-    private array $roles = [];
-
-    /**
-     * @var string The hashed password
-     */
-    #[ORM\Column]
-    private ?string $password = null;
-
-    #[ORM\Column(length: 80)]
+    #[ORM\Column(length: 100)]
+    #[Groups('write', 'write_apply_for_one_formation' )]
+    // #[Groups('write_apply_for_one_formation')]
     private ?string $full_name = null;
 
-    #[ORM\ManyToOne(inversedBy: 'users')]
+    #[ORM\Column(length: 50)]
+    #[Groups('write', 'write_apply_for_one_formation' )]
+    private ?string $level_of_study = null;
+
+    #[ORM\Column(length: 255)]
+    #[Groups('write', 'write_apply_for_one_formation' )]
+    private ?string $email = null;
+
+    #[ORM\Column(length: 255)]
+    #[Groups('write', 'write_apply_for_one_formation' )]
+    private ?string $password = null;
+
+    #[ORM\ManyToOne(inversedBy: 'roles')]
+    #[ORM\JoinColumn(nullable: true)]
     private ?Role $role = null;
 
-    #[ORM\ManyToOne(inversedBy: 'formation')]
+    #[ORM\ManyToOne(inversedBy: 'formations')]
+    // #[Groups('read_apply_for_one_formation')]
     private ?Formation $formation = null;
 
-    public function getId(): ?int
-    {
-        return $this->id;
-    }
-
-    public function getEmail(): ?string
-    {
-        return $this->email;
-    }
-
-    public function setEmail(string $email): static
-    {
-        $this->email = $email;
-
-        return $this;
-    }
+    #[ORM\Column(type: 'boolean')]
+    private $isVerified = false;
 
     /**
      * A visual identifier that represents this user.
@@ -83,44 +88,21 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     /**
      * @see UserInterface
      */
-    public function getRoles(): array
-    {
-        $roles = $this->roles;
-        // guarantee every user at least has ROLE_USER
-        $roles[] = 'ROLE_USER';
-
-        return array_unique($roles);
-    }
-
-    public function setRoles(array $roles): static
-    {
-        $this->roles = $roles;
-
-        return $this;
-    }
-
-    /**
-     * @see PasswordAuthenticatedUserInterface
-     */
-    public function getPassword(): string
-    {
-        return $this->password;
-    }
-
-    public function setPassword(string $password): static
-    {
-        $this->password = $password;
-
-        return $this;
-    }
-
-    /**
-     * @see UserInterface
-     */
     public function eraseCredentials(): void
     {
         // If you store any temporary, sensitive data on the user, clear it here
         // $this->plainPassword = null;
+    }
+
+
+    public function isAdmin(): bool
+    {
+        return \in_array('ROLE_ADMIN', $this->getRoles());
+    }
+
+    public function getId(): ?int
+    {
+        return $this->id;
     }
 
     public function getFullName(): ?string
@@ -131,6 +113,41 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function setFullName(string $full_name): static
     {
         $this->full_name = $full_name;
+
+        return $this;
+    }
+
+    public function getLevelOfStudy(): ?string
+    {
+        return $this->level_of_study;
+    }
+
+    public function setLevelOfStudy(string $level_of_study): static
+    {
+        $this->level_of_study = $level_of_study;
+
+        return $this;
+    }
+
+    public function getEmail(): ?string
+    {
+        return $this->email;
+    }
+
+    public function setEmail(string $email): static
+    {
+        $this->email = $email;
+        return $this;
+    }
+
+    public function getPassword(): ?string
+    {
+        return $this->password;
+    }
+
+    public function setPassword(string $password): static
+    {
+        $this->password = $password;
 
         return $this;
     }
@@ -147,6 +164,18 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         return $this;
     }
 
+    public function getRoles(): array
+    {
+        $role = $this->getRole();
+
+        if ($role) 
+        {
+            return [$role->getRole()];
+        }
+        // If $role is null, return an array with the default role, e.g., 'ROLE_USER'
+        return ['ROLE_USER'];
+    }
+
     public function getFormation(): ?Formation
     {
         return $this->formation;
@@ -155,6 +184,18 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function setFormation(?Formation $formation): static
     {
         $this->formation = $formation;
+
+        return $this;
+    }
+
+    public function isVerified(): bool
+    {
+        return $this->isVerified;
+    }
+
+    public function setIsVerified(bool $isVerified): static
+    {
+        $this->isVerified = $isVerified;
 
         return $this;
     }

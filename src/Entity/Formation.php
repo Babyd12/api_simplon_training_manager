@@ -5,23 +5,25 @@ namespace App\Entity;
 use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\Put;
 use ApiPlatform\Metadata\Post;
-use ApiPlatform\Metadata\Delete;
 use Doctrine\ORM\Mapping as ORM;
 use ApiPlatform\Metadata\ApiResource;
+use ApiPlatform\Metadata\Delete;
 use App\Repository\FormationRepository;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\Common\Collections\ArrayCollection;
 use Symfony\Component\Serializer\Annotation\Groups;
 
 #[ORM\Entity(repositoryClass: FormationRepository::class)]
-#[ApiResource(
-    
-)]
-#[Get()] 
+#[ApiResource]
+
+#[Get()]
+
 #[Post(
-    denormalizationContext: [ 'groups' => ['write'] ]
-)] 
-#[Put()] 
+    denormalizationContext: [ 'groups'=> ['write']  ]
+)]
+
+#[Put()]
+
 #[Delete()]
 
 
@@ -33,20 +35,27 @@ class Formation
     private ?int $id = null;
 
     #[ORM\Column(length: 50)]
-    #[Groups(['write'])]
+    #[Groups('write')]
     private ?string $title = null;
 
     #[ORM\Column(length: 255)]
-    #[Groups(['write'])]
+    #[Groups('write')]
     private ?string $description = null;
 
-    #[ORM\OneToMany(mappedBy: 'formation', targetEntity: User::class)]
+    #[ORM\Column]
+    #[Groups('write')]
+    private ?\DateTimeImmutable $startDate = null;
 
-    private Collection $formation;
+    #[ORM\Column]
+    #[Groups('write')]
+    private ?\DateTimeImmutable $endDate = null;
+
+    #[ORM\OneToMany(mappedBy: 'formation', targetEntity: User::class)]
+    private Collection $formations;
 
     public function __construct()
     {
-        $this->formation = new ArrayCollection();
+        $this->formations = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -78,18 +87,42 @@ class Formation
         return $this;
     }
 
+    public function getStartDate(): ?\DateTimeImmutable
+    {
+        return $this->startDate;
+    }
+
+    public function setStartDate(\DateTimeImmutable $startDate): static
+    {
+        $this->startDate = $startDate;
+
+        return $this;
+    }
+
+    public function getEndDate(): ?\DateTimeImmutable
+    {
+        return $this->endDate;
+    }
+
+    public function setEndDate(\DateTimeImmutable $endDate): static
+    {
+        $this->endDate = $endDate;
+
+        return $this;
+    }
+
     /**
      * @return Collection<int, User>
      */
-    public function getFormation(): Collection
+    public function getFormations(): Collection
     {
-        return $this->formation;
+        return $this->formations;
     }
 
     public function addFormation(User $formation): static
     {
-        if (!$this->formation->contains($formation)) {
-            $this->formation->add($formation);
+        if (!$this->formations->contains($formation)) {
+            $this->formations->add($formation);
             $formation->setFormation($this);
         }
 
@@ -98,7 +131,7 @@ class Formation
 
     public function removeFormation(User $formation): static
     {
-        if ($this->formation->removeElement($formation)) {
+        if ($this->formations->removeElement($formation)) {
             // set the owning side to null (unless already changed)
             if ($formation->getFormation() === $this) {
                 $formation->setFormation(null);

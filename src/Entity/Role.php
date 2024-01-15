@@ -2,42 +2,30 @@
 
 namespace App\Entity;
 
-use ApiPlatform\Metadata\Get;
-use ApiPlatform\Metadata\Put;
-use ApiPlatform\Metadata\Post;
-use ApiPlatform\Metadata\Delete;
-use Doctrine\ORM\Mapping as ORM;
-use App\Repository\RoleRepository;
 use ApiPlatform\Metadata\ApiResource;
-use Doctrine\Common\Collections\Collection;
+use App\Repository\RoleRepository;
 use Doctrine\Common\Collections\ArrayCollection;
-use Symfony\Component\Serializer\Annotation\Groups;
+use Doctrine\Common\Collections\Collection;
+use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity(repositoryClass: RoleRepository::class)]
 #[ApiResource]
-#[Get()] 
-#[Post(
-    denormalizationContext: [ 'groups' => ['write', 'read'] ]
-)] 
-#[Put()] 
-#[Delete()]
 class Role
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
-    #[Groups(['write'])]
     private ?int $id = null;
 
     #[ORM\Column(length: 50)]
     private ?string $role = null;
 
     #[ORM\OneToMany(mappedBy: 'role', targetEntity: User::class)]
-    private Collection $users;
+    private Collection $roles;
 
     public function __construct()
     {
-        $this->users = new ArrayCollection();
+        $this->roles = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -60,27 +48,27 @@ class Role
     /**
      * @return Collection<int, User>
      */
-    public function getUsers(): Collection
+    public function getRoles(): Collection
     {
-        return $this->users;
+        return $this->roles;
     }
 
-    public function addUser(User $user): static
+    public function addRole(User $role): static
     {
-        if (!$this->users->contains($user)) {
-            $this->users->add($user);
-            $user->setRole($this);
+        if (!$this->roles->contains($role)) {
+            $this->roles->add($role);
+            $role->setRole($this);
         }
 
         return $this;
     }
 
-    public function removeUser(User $user): static
+    public function removeRole(User $role): static
     {
-        if ($this->users->removeElement($user)) {
+        if ($this->roles->removeElement($role)) {
             // set the owning side to null (unless already changed)
-            if ($user->getRole() === $this) {
-                $user->setRole(null);
+            if ($role->getRole() === $this) {
+                $role->setRole(null);
             }
         }
 
